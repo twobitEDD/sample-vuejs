@@ -1,37 +1,104 @@
-<template>
-  <div id="app" class="bg-green-600 py-56 min-h-screen">
-    <div class="container mx-auto text-center px-8">
-      <h2 class="text-3xl lg:text-6xl font-bold mb-2 text-white">Welcome to Your Vue App</h2>
-      <h3 class="text-xl lg:text-4xl text-green-200">
-        Deployed to
-        <span
-          class="font-bold bg-clip-text text-transparent bg-gradient-to-br from-blue-400 via-purple-400 to-blue-500"
-        >DigitalOcean</span>
-      </h3>
+<script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useGlobalStore } from '@/stores/global';
+import { onUnmounted } from 'vue';
+import EpochGuide from '@/components/EpochGuide.vue'
+import Footer from '@/components/Footer.vue'
+import Header from '@/components/Header.vue'
+import { useWalletStore } from './stores/wallet';
+import CurrencySelector from './components/CurrencySelector.vue';
+const { theme, effects } = storeToRefs(useGlobalStore())
+const globalStore = useGlobalStore();
 
-      <div class="flex justify-center space-x-2 mt-6 lg:mt-10">
-        <a
-          href="https://www.digitalocean.com/docs/app-platform"
-          class="inline-block py-2 lg:py-4 px-4 lg:px-8 rounded bg-green-500 hover:bg-green-400 text-green-100 shadow hover:shadow-2xl transition duration-300"
-        >View the Docs</a>
-        <a
-          href="https://cloud.digitalocean.com/apps"
-          class="inline-block py-2 lg:py-4 px-4 lg:px-8 rounded bg-yellow-400 hover:bg-yellow-300 text-yellow-800 shadow hover:shadow-2xl transition duration-300"
-        >View Your Dashboard</a>
+globalStore.loadNetworkInfo()
+globalStore.setPrices()
+setInterval(() => {
+  globalStore.loadNetworkInfo()
+}, 15000);
+globalStore.$onAction(
+  ({
+    name, // name of the action
+    store, // store instance, same as `someStore`
+    args, // array of parameters passed to the action
+    after, // hook after the action returns or resolves
+  }) => {
+    after(() => {
+      if (name === 'scrollTop') {
+        window.scrollTo({
+          top: 0,
+          left: 0,
+          behavior: 'smooth'
+        });
+      }
+    })
+  }
+)
+window.addEventListener('scroll', handleScroll);
+globalStore.$onAction(
+  ({
+    name, // name of the action
+    store, // store instance, same as `someStore`
+    args, // array of parameters passed to the action
+    after, // hook after the action returns or resolves
+  }) => {
+    after(() => {
+      if (name === 'changeChainId') {
+        globalStore.setPrices()
+      }
+    })
+  }
+)
+if (window.ethereum) {
+  window.ethereum.on('chainChanged', async () => {
+    const walletStore = useWalletStore()
+    if (globalStore.autoConnect) {
+      walletStore.setupWallet()
+    }
+    globalStore.setPrices()
+  })
+  window.ethereum.on('accountsChanged', () => {
+    window.location.reload();
+  });
+}
+
+function handleScroll() {
+  globalStore.setScroll(window.scrollY)
+}
+onUnmounted(endListener)
+function endListener() {
+  window.removeEventListener('scroll', handleScroll);
+}
+</script>
+
+<template>
+  <div :class="theme">
+    <div id="root"
+      class="antialiased bg-gradient-to-r from-gray-300 to-slightGray dark:from-oswapDark-gray dark:to-slightDark">
+      <div
+        class="flex flex-col flex-1 min-h-screen mx-auto justify-center text-gray-700 dark:text-white overflow-hidden">
+        <div
+          class="fixed top-0 right-0 left-0 bg-gradient-to-r from-gray-300 to-slightGray dark:from-oswapDark-gray dark:to-slightDark shadow-lg z-90">
+          <div class="max-w-screen-xl mx-auto">
+            <Header />
+          </div>
+        </div>
+        <div class="flex flex-1 lg:py-20 mx-3 lg:mx-0 mt-14 lg:mt-0 min-h-full">
+          <router-view v-slot="{ Component }">
+            <transition :enter-active-class="effects ? 'animate__animated animate__fadeIn' : ''"
+              :leave-active-class="effects ? 'animate__animated animate__fadeOut' : ''" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </div>
+        <div class="flex flex-none w-full max-w-screen-xl mx-auto">
+          <Footer />
+        </div>
       </div>
+    </div>
+
+    <div class="fixed flex flex-col justify-end space-y-2 bottom-5 right-1">
+      <CurrencySelector />
+      <EpochGuide />
     </div>
   </div>
 </template>
-
-<script>
-export default {
-  name: "App",
-};
-</script>
-
-<style>
-#app {
-  background-color: #268351;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232c945c' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
-</style>
